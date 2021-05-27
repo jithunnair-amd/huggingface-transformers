@@ -23,6 +23,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
+import torch
 
 import numpy as np
 from datasets import load_dataset, load_metric
@@ -515,6 +516,7 @@ def main():
 
     # Training
     if training_args.do_train:
+        torch.autograd.set_detect_anomaly(True)
         checkpoint = None
         if training_args.resume_from_checkpoint is not None:
             checkpoint = training_args.resume_from_checkpoint

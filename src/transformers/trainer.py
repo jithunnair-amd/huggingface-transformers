@@ -1261,6 +1261,24 @@ class Trainer:
                 if step % args.gradient_accumulation_steps == 0:
                     self.control = self.callback_handler.on_step_begin(args, self.state, self.control)
 
+
+                class VerboseExecutionModel(nn.Module):
+                    def __init__(self, model: nn.Module):
+                        super(VerboseExecutionModel, self).__init__()
+                        self.model = model
+
+                        for name, layer in self.model.named_children():
+                            layer.__name__ = name
+                            layer.register_forward_hook(
+                                    lambda layer, input, output: print(f"JN: {layer.__name__};;; input: {input};;; output: {output}")
+                            )
+
+                    def forward(self, *inputs, **kwargs) -> torch.Tensor:
+                        return self.model(*inputs, **kwargs)
+
+
+                model = VerboseExecutionModel(model)
+
                 if (
                     ((step + 1) % args.gradient_accumulation_steps != 0)
                     and args.local_rank != -1
