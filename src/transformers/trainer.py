@@ -1262,22 +1262,56 @@ class Trainer:
                     self.control = self.callback_handler.on_step_begin(args, self.state, self.control)
 
 
-                class VerboseExecutionModel(nn.Module):
-                    def __init__(self, model: nn.Module):
-                        super(VerboseExecutionModel, self).__init__()
-                        self.model = model
+#                class VerboseExecutionModel(nn.Module):
+#                    def __init__(self, model: nn.Module):
+#                        super(VerboseExecutionModel, self).__init__()
+#                        self.model = model
+#
+#                        for layer in self.model.modules():
+#                            layer.register_forward_hook(
+#                                    lambda layer, input, output: print(f"JN: {layer};;;\n JN: input: {input};;;\n JN: output: {output}")
+#                            )
+#
+#                    def forward(self, *inputs, **kwargs) -> torch.Tensor:
+#                        return self.model(*inputs, **kwargs)
+#
+#
+#                model = VerboseExecutionModel(model)
 
-                        for name, layer in self.model.named_children():
-                            layer.__name__ = name
-                            layer.register_forward_hook(
-                                    lambda layer, input, output: print(f"JN: {layer.__name__};;; input: {input};;; output: {output}")
-                            )
+                def check_tensor_finite(tensor, tensor_name=None):
+                    if tensor is None:
+                        return True
+                    if torch.isfinite(tensor).all():
+                        #print("Tensor", tensor_name, "is finite")
+                        #print(tensor)
+                        return True
+                    else:
+                        #print("Tensor", tensor_name, "is not finite")
+                        #print(tensor)
+                        return False
 
-                    def forward(self, *inputs, **kwargs) -> torch.Tensor:
-                        return self.model(*inputs, **kwargs)
+                def check_tensors_finite(tensors, tensor_name=None):
+                    if tensors is None:
+                        return True
+                    try:
+                        iterator = iter(tensors)
+                    except TypeError:
+                        print("JN: " + str(type(tensors)))
+                        return check_tensor_finite(tensors)
+                    else:
+                        # iterable
+                        is_finite = True
+                        for tensor in iterator:
+                            is_finite = is_finite and check_tensor_finite(tensor)
+                        return is_finite
 
+                def my_hook(layer, input, output):
+                    if not check_tensors_finite(output, str(layer)):
+                        print(f"JN: {layer};;;\n JN: input: {input};;;\n JN: output: {output}")
 
-                model = VerboseExecutionModel(model)
+                torch.nn.modules.module.register_module_forward_hook(
+                    my_hook
+                )
 
                 if (
                     ((step + 1) % args.gradient_accumulation_steps != 0)
